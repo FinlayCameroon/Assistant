@@ -17,7 +17,7 @@ def volumeDown():
 
 def API_REQUEST(text):
     import requests
-    API_KEY = "0sww17AF6iXk8lbmRtx25dYWceuY6kf1"
+    API_KEY = "your own api key"
     r = requests.post('https://api.carterapi.com/v0/chat', json={
         'api_key': f'{API_KEY}',
         'query': f'{text}',
@@ -106,21 +106,6 @@ def activeCustomTriggers(activatedTriggers, entityResult):
     else:
         pass
 
-
-connection = connectionCheck()
-if connection == True:
-    print("Assistant is online")
-    assistantOnline = True
-    apiRes = API_REQUEST("What is the weather")
-    arrayOfActivatedTriggers, arrayOfDetectedEntities = checkCustomTriggers(
-        apiRes)
-
-    assistantAnswer = activeCustomTriggers(assistantOnline, arrayOfActivatedTriggers, arrayOfDetectedEntities)
-
-
-elif connectionCheck == False:
-    print("Assistant is offline \nPlease become online to use my services")
-    assistantOnline = False
 
 
 connection = connectionCheck()
