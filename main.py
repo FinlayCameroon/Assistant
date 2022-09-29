@@ -118,5 +118,5 @@ else:
 
 while assistantOnline:
     apiRequest = input(str("You: "))
-    arrayOfActivatedTriggers, arrayOfDetectedEntities = checkCustomTriggers(apiRes)
+    arrayOfActivatedTriggers, arrayOfDetectedEntities = checkCustomTriggers(apiRequest)
     assistantAnswer = activeCustomTriggers(assistantOnline, arrayOfActivatedTriggers, arrayOfDetectedEntities)
