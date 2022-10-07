@@ -136,7 +136,7 @@ def activeCustomTriggers(activatedTriggers, entityResult):
         elif trigger == "Time":
             time()
         elif trigger == "Search-Google":
-            pass  # google search
+            pass  # google search will get perfomed
         elif trigger == "Exit":
             sys.exit()
     else:
