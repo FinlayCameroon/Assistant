@@ -1,19 +1,31 @@
 import sys
+import webbrowser
+import io
+from pydub import AudioSegment
+import speech_recognition as sr
+import whisper
+import tempfile
+import os
+
+
+temp_dir = tempfile.mkdtemp()
+save_path = os.path.join(temp_dir, "temp.wav")
+
 
 def volumeUp():
     import volumeControl as vc
     vc.VolumeControl().changeVolume(0.0)
-    print("Volume set to max")
+
 
 def muteAudio():
     import volumeControl as vc
     vc.VolumeControl().changeVolume(-85.0)
-    print("Audio fully muted")
+
 
 def volumeDown():
     import volumeControl as vc
     vc.VolumeControl().changeVolume(-12.0)
-    print("Volume lowered")
+
 
 def API_REQUEST(text):
     import requests
@@ -26,82 +38,142 @@ def API_REQUEST(text):
     agent_response = r.json()
     return agent_response
 
+
+def linearSearch(data, target):
+    for x in range(len(data)):
+        if data[x] == target:
+            return x
+            break
+
+
+def audioToText(audioFile):
+    model = whisper.load_model("large", in_memory=True) # change model size from large to medium if computer is lower end
+    result = model.transcribe(audioFile)
+    print(result["text"])
+
+
+def openTwitter():
+    webbrowser.open_new_tab("https://twitter.com")
+
+
+def openYoutube():
+    webbrowser.open_new_tab("https://www.youtube.com")
+
+
 def connectionCheck():
     import socket
     try:
         socket.create_connection(('google.com', 80))
+        print("Everything is fully connected")
         return True
     except OSError:
+        print("Connection is not available")
         return False
+        
 
-def time(location):
+
+def time(rawInput):
     from requests_html import HTMLSession
     s = HTMLSession()
-
-    if location[0] == "location":
-        url = f'https://www.google.com/search?q=what+is+the+time+in+{location[1]}'
-    else:
-        url = f'https://www.google.com/search?q=what+is+the+time'
+    from nltk import tokenize
+    pos = 0
+    place = tokenize.word_tokenize(rawInput)
+    for x in range(len(place)):
+        if place[x] == "in" or place[x] == "at" or place[x] == "In" or place[x] == "At":
+            pos = x+1
+    place = place[pos:]
+    place = " ".join(place)
+    url = f'https://www.google.com/search?q=time+in+{place}'
     r = s.get(url, headers={
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.115 Safari/537.36 OPR/88.0.4412.75'})
-    time = r.html.find('gsrt vk_bk FzvWSb YwPhnf',first=True).text
-    if location[0] == "location":
-        res = f"In {location[1]} it is {time}"
-    else:
-        res = f"It is {time}"
-    print(res)
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.115 Safari/537.36 OPR/88.0.4412.75'})
+    time = r.html.find('div.wDYxhc', first=True).text
+    time = time.replace("Feedback", "")
+    time = time.replace("Local Time", "")
+    time = tokenize.word_tokenize(time)
+    time = f"The time in {place} is {time[0]}"
+    print(time)
 
-def weatherInfo(location):
+
+def weatherInformation(rawInput):
     from requests_html import HTMLSession
+    from nltk import tokenize
     s = HTMLSession()
-
-    if location[0] == "location":
-        url = f'https://www.google.com/search?q=weather+in+{location[1]}'
-    else:
-        url = f'https://www.google.com/search?q=what+is+the+weather'
+    pos = 0
+    place = tokenize.word_tokenize(rawInput)
+    for x in range(len(place)):
+        if place[x] == "in" or place[x] == "at" or place[x] == "In" or place[x] == "At":
+            pos = x+1
+    place = rawInput[pos:]
+    url = f'https://www.google.com/search?q=what+is+the+weather+in+{place}'
     r = s.get(url, headers={
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.115 Safari/537.36 OPR/88.0.4412.75'})
     temp = r.html.find('span#wob_tm', first=True).text
     unit = r.html.find('div.vk_bk.wob-unit span.wob_t', first=True).text
     desc = r.html.find('div.VQF4g', first=True).find(
         'span#wob_dc', first=True).text
-    if location[0] == "location":
-        res = f"In {location[1]} it is {temp}{unit} and it's {desc}"
-    else:
-        res = f"It is {temp}{unit} and it's {desc}"
+    place = r.html.find('div.wob_loc', first=True).text
+    res = f"It is {temp}{unit} and it's {desc} in {place}"
     print(res)
-    
-def googleSearch(query):
+
+
+def textSummarizer(textToBeSummarized):
+    import requests
+    API_TOKEN = 'your own api key'
+    API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+    headers = {"Authorization": f"Bearer {API_TOKEN}"}
+
+    def query(payload):
+        response = requests.post(API_URL, headers=headers, json=payload)
+        return response.json()
+
+    output = query({
+        "inputs": f"{textToBeSummarized}", "options": {"use_gpu": True} # turn "use_gpu" to False if you dont have HuggingFace Pro subscription
+    })
+    print(output[0]['summary_text'])
+
+
+def newsRequest():
+    print("Not yet implemented")
+    # will use webscraping to gather data from twitter, bbc, ect
+
+
+def websiteFinder(query):
     from nltk import tokenize
     from googlesearch import search
+
     query = tokenize.word_tokenize(query)
     for x in range(len(query)):
         if query[x] == "keyword" or query[x] == "keywords":
             pos = x+1
     query = query[pos:]
     query = " ".join(query)
-    searchResults = search(query, num_results=3, lang="en")
+    searchResults = search(query, num_results=10, lang="en")
     print("These are some of the top results for your search:")
     for result in searchResults:
-        print(result)    
+        print(result)
+        webbrowser.open_new_tab(result)
 
-def textSummarizer(textToBeSummarized):
-    import requests
-    API_TOKEN = 'your_own_api'
-    API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
-    headers = {"Authorization": f"Bearer {API_TOKEN}"}
-    def query(payload):
-        response = requests.post(API_URL, headers=headers, json=payload)
-        return response.json()
 
-    posOfText = (linearSearch(textToBeSummarized,":"))+1
-    output = query({
-        "inputs": f"{textToBeSummarized[posOfText:]}",
-    })
-    print(output[0]['summary_text'])  
-    
+def bigSearch(query):
+    import BigQuery
+    from nltk import tokenize
+    query = tokenize.word_tokenize(query)
+    pos = 0
+    for x in range(len(query)):
+        if query[x] == "keyword" or query[x] == "keywords":
+            pos = x+1
+    query = query[pos:]
+    query = " ".join(query)
+    searchEngine = BigQuery.BigQuery(query)
+    wikipediaResult = searchEngine.wikiSearch()
+    googleScientificResult, googleScientificFact, googleGeneralInformationResult = searchEngine.googleSearch()
+    wolframalphaResult = searchEngine.wolframalphaSearch()
+    result = f"{wikipediaResult}\n{googleScientificResult}\n{googleScientificFact}\n{googleGeneralInformationResult}\n{wolframalphaResult}"
+    textSummarizer(result)
+
+
 def checkCustomTriggers(api_response):
-    customTriggers = api_response['triggers']
+    customTriggers = api_response["triggers"]
     numOfActivatedTriggers = 0
     for trigger in customTriggers:
         numOfActivatedTriggers += 1
@@ -111,19 +183,10 @@ def checkCustomTriggers(api_response):
         arrayOfCustomTriggers[loopCounter] = trigger['type']
         loopCounter += 1
 
-    entitiesDetection = customTriggers[0]['entities']
-    entityResult = ["Not Found"]
-    if entitiesDetection != "[]":
-        for entity in entitiesDetection:
-            entityType = entity['label']
-            entityWord = entity['word']
-            entityResult = [entityType, entityWord]
-    
-    
+    return arrayOfCustomTriggers
 
-    return arrayOfCustomTriggers, entityResult
 
-def activeCustomTriggers(activatedTriggers, entityResult):
+def activeCustomTriggers(activatedTriggers, rawInput):
     for trigger in activatedTriggers:
         if trigger == "Volume-Up":
             volumeUp()
@@ -131,29 +194,82 @@ def activeCustomTriggers(activatedTriggers, entityResult):
             muteAudio()
         elif trigger == "volumeDown":
             volumeDown()
-        elif trigger == "Weather":
-            weatherInfo(entityResult)
+        elif trigger == "Weather-Information":
+            weatherInformation()
         elif trigger == "Time":
-            time()
+            time(rawInput)
         elif trigger == "Search-Google":
-            pass  # google search will get perfomed
+            bigSearch(rawInput)
         elif trigger == "Exit":
             sys.exit()
+        elif trigger == "Transcribe-Audio":
+            audioFilePath = input("Enter the path to the audio file: ")
+            audioToText(audioFilePath)
+        elif trigger == "Text-Summarizer":
+            textToBeSummarized = input(
+                "Enter the text you want to summarize: ")
+            textSummarizer(textToBeSummarized=textToBeSummarized)
+        elif trigger == "Open-Twitter":
+            openTwitter()
+        elif trigger == "Open-Youtube":
+            openYoutube()
+        elif trigger == "Website-Finder":
+            websiteFinder(rawInput)
+        elif trigger == "News-Request":
+            newsRequest()
+        elif trigger == "Connection-Check":
+            connectionCheck()
+
     else:
         pass
 
 
+def main(model="base", english=True, energy=500, dynamic_energy=True, verbose=False, pause=0.8):
+    if model != "large" and english:
+        model = model + ".en"
+    audio_model = whisper.load_model(model, in_memory=True)
 
-connection = connectionCheck()
-if connection == True:
-    print("Assistant is online and fully functional")
-    assistantOnline = True
-else:
-    print("Assistant is offline \nPlease become online to use my services")
-    assistantOnline = False
+    r = sr.Recognizer()
+    r.energy_threshold = energy
+    r.pause_threshold = pause
+    r.dynamic_energy_threshold = dynamic_energy
 
-while assistantOnline:
-    apiRequest = input(str("You: "))
-    arrayOfActivatedTriggers, arrayOfDetectedEntities = checkCustomTriggers(apiRequest)
-    assistantAnswer = activeCustomTriggers(assistantOnline, arrayOfActivatedTriggers, arrayOfDetectedEntities)
-   
+    assistantOnline = connectionCheck()
+
+    if assistantOnline == True:
+        with sr.Microphone(sample_rate=16000) as source:
+            print("Say something!")
+            while assistantOnline:
+                print("Listening...")
+                # get and save audio to wav file
+                r.adjust_for_ambient_noise(source)
+                audio = r.listen(source)
+                data = io.BytesIO(audio.get_wav_data())
+                audio_clip = AudioSegment.from_file(data)
+                audio_clip.export(save_path, format="wav")
+                try:
+                    if english:
+                        print("Transcribing...")
+                        result = audio_model.transcribe(
+                            save_path, language='english')
+                    else:
+                        print("Transcribing...")
+                        result = audio_model.transcribe(save_path)
+
+                    if not verbose:
+                        predicted_text = result["text"]
+                        print(f"You said: {predicted_text}")
+                    else:
+                        print(result)
+                except:
+                    print("Error: Could not transcribe audio")
+                if len(predicted_text) > 2:
+                    apiAns = API_REQUEST(predicted_text)
+                    arrayOfActivatedTriggers = checkCustomTriggers(apiAns)
+                    activeCustomTriggers(
+                        arrayOfActivatedTriggers, predicted_text)
+                assistantOnline = connectionCheck()
+
+
+main(model="tiny", english=True, energy=450,
+     dynamic_energy=True, verbose=False, pause=0.8) # if you want more accurate speech recognition change tiny to base but the bigger the model longer it will take
